@@ -27,12 +27,16 @@ if(!token) return next({
 jwt.verify(
   token,
   JWT_SECRET,
-  (err, decoded) => {
-    if(err) return next({
-      status: 401, message: 'Token invalid', realErrorMessage: err.message,
-    })
-    req.decodedJwt = decoded
-    next() 
+  (err, decodedToken) => {
+    if(err) {
+      next({
+        status: 401, message: 'Token invalid',
+      })
+    } else {
+      req.decodedToken = decodedToken
+      next() 
+    }
+    
   }
 )
 
@@ -49,9 +53,9 @@ const only = role_name => (req, res, next) => {
 
     Pull the decoded token from the req object, to avoid verifying it again!
   */
- const {decodedJwt} = req
 
- if(decodedJwt.role === 'admin') {
+ 
+ if(role_name === req.decodedToken.role_name) {
    next()
  } else {
    next({
@@ -70,14 +74,14 @@ const checkUsernameExists = async (req, res, next) => {
     }
   */
  try {
-   const user = await User.findBy({ username: req.body.username})
-   if(!user.length) {
-     req.user  = user[0]
-     next()
+   const [user] = await User.findBy({ username: req.body.username})
+   if(!user) {
+    next({
+      message: "Invalid credentials", status: 401
+    })
    } else {
-     next({
-       message: "Invalid credentials", status: 401
-     })
+    req.user = user
+    next()
    } 
   }catch (err) {
      next(err)
